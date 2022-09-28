@@ -6,18 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExchangeRateDto {
+public class CurrencyHistoryDto {
 
-  private String from;
-  private String to;
-  private double currencyRate;
-  private double result;
-  private int amount;
-  private LocalDate date;
-
+  private LocalDate from;
+  private LocalDate to;
+  private List<ExchangeRateDto> exchangeRateDtos;
 }

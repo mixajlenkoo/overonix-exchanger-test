@@ -5,19 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExchangeRateDto {
+public class CurrencyRateHistoryFilterDto {
 
   private String from;
   private String to;
-  private double currencyRate;
-  private double result;
-  private int amount;
-  private LocalDate date;
-
+  private String currencySystem;
+  private Set<String> currencyCodes;
 }
