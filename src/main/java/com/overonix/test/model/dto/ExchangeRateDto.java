@@ -19,5 +19,4 @@ public class ExchangeRateDto {
   private double result;
   private int amount;
   private LocalDate date;
-
 }

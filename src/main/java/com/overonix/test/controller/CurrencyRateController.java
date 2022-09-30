@@ -47,8 +47,7 @@ public class CurrencyRateController {
   @GetMapping(CURRENCY_HISTORY)
   @Operation(
       summary =
-          "It return exchange rates history by criteria parameters like: date range, currency code or 3d party system"
-              + "identifier")
+          "It return exchange rates history by criteria parameters like: date range, currency code or amount")
   public CurrencyHistoryDto getCurrencyHistory(
       @Parameter(name = "filters", description = "Filters that will be applied to the search")
           CurrencyRateHistoryFilterDto filters) {

@@ -1,13 +1,13 @@
 package com.overonix.test.service.impl;
 
 import com.overonix.test.converter.ExchangeRateConverter;
-import com.overonix.test.exception.InvalidCurrencyRateException;
 import com.overonix.test.model.ExchangeRate;
 import com.overonix.test.model.dto.CurrencyHistoryDto;
 import com.overonix.test.model.dto.CurrencyRateHistoryFilterDto;
 import com.overonix.test.model.dto.ExchangeRateDto;
 import com.overonix.test.repository.ExchangeRateRepository;
 import com.overonix.test.service.CurrencyRateService;
+import com.overonix.test.validation.ExchangeRateValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -17,18 +17,17 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 @Slf4j
@@ -48,27 +47,26 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
   private static final String API_KEY = "apikey";
   private static final String GET = "GET";
   private static final String SYMBOLS = "symbols";
-  private static final String INVALID_CURRENCY_RATE_MESSAGE =
-      "Currency rate is not valid. Check entered data.";
   private static final String NOT_RESPONSE = "API doesn't response. Try again later.";
 
   private final ExchangeRateRepository exchangeRateRepository;
   private final ExchangeRateConverter exchangeRateConverter;
+  private final ExchangeRateValidator exchangeRateValidator;
 
-  @Value("${api.key}")
+  @Value("${api.layer.key}")
   private String apiKey;
 
-  @Value("${api.convert.url}")
+  @Value("${api.layer.convert.url}")
   private String convertUrl;
 
-  @Value("${api.all.currencies.url}")
+  @Value("${api.layer.all.currencies.url}")
   private String allCurrenciesURL;
 
   @Override
   public ExchangeRateDto getExchangeCurrencyRateWithSave(String from, String to, String amount) {
-
+    exchangeRateValidator.validateExchangeData(from, to, amount, getAllCurrencies());
     ExchangeRate exchangeRateResult = getRateFromApiAndSaveToDb(from, to, amount);
-
+    log.info("Exchange currency rate is received.");
     return exchangeRateConverter.toDto(exchangeRateResult);
   }
 
@@ -83,27 +81,26 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
 
     try {
       response = client.newCall(request).execute();
-      jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+      jsonObject = new JSONObject(requireNonNull(response.body()).string());
       currencies = jsonObject.getJSONObject(SYMBOLS).keySet();
     } catch (IOException e) {
       log.error(NOT_RESPONSE);
     }
+    log.info("All existing currencies are received");
 
     return currencies;
   }
 
   @Override
   public CurrencyHistoryDto getCurrencyRateHistoryByFilter(CurrencyRateHistoryFilterDto filters) {
-
-    if (nonNull(filters.getFrom()) && nonNull(filters.getTo())) {
+    if (isFilterExists(filters)) {
       return getCurrencyRateHistoryByDateRange(filters);
     }
 
     List<ExchangeRate> exchangeRates = exchangeRateRepository.findAll();
-
     LocalDate firstRate = getFirstRateDateIdExists(exchangeRates);
-    List<ExchangeRateDto> exchangeRateDtos =
-        exchangeRates.stream().map(exchangeRateConverter::toDto).collect(toList());
+    List<ExchangeRateDto> exchangeRateDtos = getExchangeRateDtos(exchangeRates);
+    log.info("Currency rate history is received");
 
     return CurrencyHistoryDto.builder()
         .from(firstRate)
@@ -112,29 +109,53 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
         .build();
   }
 
+  private boolean isFilterExists(CurrencyRateHistoryFilterDto filters) {
+    return !(isNull(filters.getFrom())
+        && isNull(filters.getTo())
+        && isNull(filters.getFromCurrencyCodes())
+        && isNull(filters.getToCurrencyCodes())
+        && isNull(filters.getAmount()));
+  }
+
   private LocalDate getFirstRateDateIdExists(List<ExchangeRate> exchangeRates) {
     LocalDate firstRate = LocalDate.now();
     if (exchangeRates.stream().findFirst().isPresent()) {
       firstRate = exchangeRates.get(0).getDate();
     }
+
     return firstRate;
   }
 
   private CurrencyHistoryDto getCurrencyRateHistoryByDateRange(
       CurrencyRateHistoryFilterDto filters) {
-    LocalDate from;
-    List<ExchangeRate> exchangeRates;
-    LocalDate to;
-    from = LocalDate.parse(filters.getFrom());
-    to = LocalDate.parse(filters.getTo());
-    exchangeRates = exchangeRateRepository.findAllByDateBetween(from, to);
-    List<ExchangeRateDto> exchangeRateDtos =
-        exchangeRates.stream().map(exchangeRateConverter::toDto).collect(toList());
+    LocalDate from = null;
+    LocalDate to = null;
+    if (nonNull(filters.getFrom()) && nonNull(filters.getTo())) {
+      from = LocalDate.parse(filters.getFrom());
+      to = LocalDate.parse(filters.getTo());
+    }
+
+    List<ExchangeRate> exchangeRates =
+        exchangeRateRepository.findAllByFilter(
+            from,
+            to,
+            filters.getAmount(),
+            filters.getFromCurrencyCodes(),
+            filters.getToCurrencyCodes());
+
+    List<ExchangeRateDto> exchangeRateDtos = getExchangeRateDtos(exchangeRates);
+    log.info("Currency rate history with filters is received");
+
     return CurrencyHistoryDto.builder()
         .from(from)
         .to(to)
         .exchangeRateDtos(exchangeRateDtos)
         .build();
+  }
+
+  @NotNull
+  private List<ExchangeRateDto> getExchangeRateDtos(List<ExchangeRate> exchangeRates) {
+    return exchangeRates.stream().map(exchangeRateConverter::toDto).collect(toList());
   }
 
   @NotNull
@@ -157,10 +178,12 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
 
     try {
       response = client.newCall(request).execute();
-      jsonObject = new JSONObject(Objects.requireNonNull(response.body()).string());
+      jsonObject = new JSONObject(requireNonNull(response.body()).string());
 
       exchangeRateResult = createExchangeRateEntity(jsonObject);
       exchangeRateRepository.save(exchangeRateResult);
+      log.info("The operation with the exchange rate was saved to DB.");
+
     } catch (IOException e) {
       log.error(NOT_RESPONSE);
     }
@@ -178,9 +201,6 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
   }
 
   private ExchangeRate createExchangeRateEntity(JSONObject jsonObject) {
-    if (jsonObject.isEmpty()) {
-      throw new InvalidCurrencyRateException(INVALID_CURRENCY_RATE_MESSAGE);
-    }
     return ExchangeRate.builder()
         .fromCurrency(jsonObject.getJSONObject(QUERY).getString(FROM))
         .toCurrency(jsonObject.getJSONObject(QUERY).getString(TO))

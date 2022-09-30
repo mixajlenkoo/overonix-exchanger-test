@@ -1,0 +1,11 @@
+{
+  "from": "2022-09-29",
+  "to": "2022-09-29",
+  "amount": 2000,
+  "fromCurrencyCodes": [
+    "USD"
+  ],
+  "toCurrencyCodes": [
+    "UAH"
+  ]
+}

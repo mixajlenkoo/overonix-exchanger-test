@@ -12,3 +12,9 @@ springdoc:
   swagger-ui:
     tags-sorter: alpha
     operations-sorter: alpha
+logging:
+  level:
+    org.springframework.web: INFO
+    guru.springframework.controllers: DEBUG
+    org.hibernate: WARN
+    org: INFO

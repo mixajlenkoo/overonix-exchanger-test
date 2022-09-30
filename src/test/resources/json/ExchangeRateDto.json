@@ -1,0 +1,12 @@
+{
+  "from": "USD",
+  "to": "UAH",
+  "currencyRate": 36.33883,
+  "result": 72677.66,
+  "amount": 2000,
+  "date": [
+    2022,
+    9,
+    29
+  ]
+}
