@@ -98,13 +98,14 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
     }
 
     List<ExchangeRate> exchangeRates = exchangeRateRepository.findAll();
-    LocalDate firstRate = getFirstRateDateIdExists(exchangeRates);
+    LocalDate firstRate = getFirstRateDateIfExists(exchangeRates);
+    LocalDate lastRate = getLastRateDateIfExists(exchangeRates);
     List<ExchangeRateDto> exchangeRateDtos = getExchangeRateDtos(exchangeRates);
     log.info("Currency rate history is received");
 
     return CurrencyHistoryDto.builder()
         .from(firstRate)
-        .to(LocalDate.now())
+        .to(lastRate)
         .exchangeRateDtos(exchangeRateDtos)
         .build();
   }
@@ -117,13 +118,22 @@ public class CurrencyRateServiceImpl implements CurrencyRateService {
         && isNull(filters.getAmount()));
   }
 
-  private LocalDate getFirstRateDateIdExists(List<ExchangeRate> exchangeRates) {
+  private LocalDate getFirstRateDateIfExists(List<ExchangeRate> exchangeRates) {
     LocalDate firstRate = LocalDate.now();
     if (exchangeRates.stream().findFirst().isPresent()) {
       firstRate = exchangeRates.get(0).getDate();
     }
 
     return firstRate;
+  }
+
+  private LocalDate getLastRateDateIfExists(List<ExchangeRate> exchangeRates) {
+    LocalDate lastRate = LocalDate.now();
+    if (!exchangeRates.isEmpty()) {
+      lastRate = exchangeRates.get(exchangeRates.size() - 1).getDate();
+    }
+
+    return lastRate;
   }
 
   private CurrencyHistoryDto getCurrencyRateHistoryByDateRange(

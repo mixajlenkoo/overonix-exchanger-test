@@ -119,8 +119,6 @@ public class CurrencyRateServiceImplTest {
   @Test
   public void shouldGetCurrencyRateHistoryByFilterWithoutFiltersTest() {
     // GIVEN
-    currencyHistoryDto.setFrom(LocalDate.now());
-    currencyHistoryDto.setTo(LocalDate.now());
     when(exchangeRateRepository.findAll()).thenReturn(singletonList(exchangeRate));
     when(exchangeRateConverter.toDto(any())).thenReturn(exchangeRateDto);
 
