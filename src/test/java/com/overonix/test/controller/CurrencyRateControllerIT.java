@@ -6,12 +6,12 @@ import com.overonix.test.service.CurrencyRateService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.io.IOException;
 import java.util.Set;
 
 import static com.overonix.test.constants.Url.ALL_CURRENCY_CODES;
@@ -31,10 +31,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
-@RunWith(MockitoJUnitRunner.class)
-public class CurrencyRateControllerTest {
+@RunWith(SpringRunner.class)
+@WebMvcTest(CurrencyRateController.class)
+public class CurrencyRateControllerIT {
 
   private static final String UAH = "UAH";
   private static final String USD = "USD";
@@ -49,17 +49,15 @@ public class CurrencyRateControllerTest {
   private static final String JSON_CURRENCIES_PATH = "json/AllCurrencies.json";
   private static final String JSON_CURRENCY_HISTORY_DTO_PATH = "json/CurrencyHistoryDto.json";
 
-  @InjectMocks private CurrencyRateController currencyRateController;
-  @Mock private CurrencyRateService currencyRateService;
+  @MockBean private CurrencyRateService currencyRateService;
+  @Autowired private MockMvc mockMvc;
 
-  private MockMvc mvc;
   private ExchangeRateDto exchangeRateDto;
   private Set<String> currencies;
   private CurrencyHistoryDto currencyHistoryDto;
 
   @Before
   public void init() {
-    mvc = standaloneSetup(currencyRateController).build();
     exchangeRateDto = getTestFixtureAsObject(JSON_EXCHANGE_RATE_DTO_PATH, ExchangeRateDto.class);
     currencies = getTestFixtureAsSetOfObjects(JSON_CURRENCIES_PATH, String.class);
     currencyHistoryDto =
@@ -74,7 +72,8 @@ public class CurrencyRateControllerTest {
 
     // WHEN
     String actual =
-        mvc.perform(
+        mockMvc
+            .perform(
                 post(CURRENCIES + CONVERT)
                     .param(FROM_PARAM_NAME, USD)
                     .param(TO_PARAM_NAME, UAH)
@@ -99,7 +98,8 @@ public class CurrencyRateControllerTest {
 
     // WHEN
     String actual =
-        mvc.perform(get(CURRENCIES + ALL_CURRENCY_CODES))
+        mockMvc
+            .perform(get(CURRENCIES + ALL_CURRENCY_CODES))
             .andDo(print())
             .andExpect(status().isOk())
             .andExpect(content().contentType(APPLICATION_JSON))
@@ -109,7 +109,7 @@ public class CurrencyRateControllerTest {
 
     // THEN
     verify(currencyRateService).getAllCurrencies();
-    assertTrue(actual.contains("USD"));
+    assertTrue(actual.contains(USD));
   }
 
   @Test
@@ -119,7 +119,8 @@ public class CurrencyRateControllerTest {
 
     // WHEN
     String actual =
-        mvc.perform(
+        mockMvc
+            .perform(
                 get(CURRENCIES + CURRENCY_HISTORY)
                     .param(FROM_PARAM_NAME, TEST_DATE)
                     .param(TO_PARAM_NAME, TEST_DATE)
